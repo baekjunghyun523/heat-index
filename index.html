@@ -2,26 +2,27 @@
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
-  <title>체감온도 계산기</title>
+  <title>공공기관 기준 체감온도 계산기</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      padding: 20px;
+      font-family: sans-serif;
+      padding: 30px;
       max-width: 500px;
       margin: auto;
     }
     input {
       padding: 8px;
-      margin: 5px;
       width: 100%;
+      margin-bottom: 10px;
+      font-size: 16px;
     }
     button {
       padding: 10px;
       width: 100%;
-      margin-top: 10px;
-      background-color: #4CAF50;
+      background-color: #007ACC;
       color: white;
       border: none;
+      font-size: 16px;
       cursor: pointer;
     }
     .result {
@@ -32,41 +33,51 @@
   </style>
 </head>
 <body>
-  <h2>여름철 체감온도 계산기</h2>
-  <label for="temp">현재 기온 (섭씨 °C):</label>
-  <input type="number" id="temp" placeholder="예: 33">
-
-  <label for="humidity">상대습도 (%):</label>
-  <input type="number" id="humidity" placeholder="예: 70">
-
-  <button onclick="calculateHeatIndex()">체감온도 계산</button>
-
+  <h2>공공기관 기준 체감온도 계산기</h2>
+  <label>현재 기온 (°C):</label>
+  <input type="number" id="temp" min="25" max="40" placeholder="예: 36">
+ 
+  <label>상대습도 (%):</label>
+  <input type="number" id="humidity" min="40" max="100" step="5" placeholder="예: 70">
+ 
+  <button onclick="calculate()">체감온도 계산</button>
   <div class="result" id="result"></div>
 
   <script>
-    function calculateHeatIndex() {
-      const tempC = parseFloat(document.getElementById("temp").value);
-      const humidity = parseFloat(document.getElementById("humidity").value);
+    // 공공기관 기준 체감온도 테이블 (기온: 25~40, 습도: 40~100)
+    const temperatures = [25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40];
+    const humidities = [40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+    const table = [
+      [23.8, 24.7, 25.7, 26.6, 27.6, 28.5, 29.5, 30.4, 31.4, 32.4, 33.3, 34.3, 35.3, 36.2, 37.2, 38.2],
+      [24.2, 25.2, 26.1, 27.1, 28.0, 29.0, 30.0, 31.0, 32.0, 32.9, 33.9, 34.9, 35.9, 36.9, 37.8, 38.8],
+      [24.6, 25.6, 26.6, 27.6, 28.6, 29.6, 30.5, 31.5, 32.5, 33.5, 34.5, 35.4, 36.4, 37.4, 38.4, 39.4],
+      [25.1, 26.0, 27.0, 28.0, 29.0, 30.0, 31.0, 32.0, 33.0, 34.0, 35.0, 36.0, 37.0, 38.0, 39.0, 40.0],
+      [25.5, 26.5, 27.5, 28.4, 29.4, 30.4, 31.4, 32.4, 33.5, 34.5, 35.5, 36.5, 37.5, 38.5, 39.5, 40.5],
+      [25.9, 26.9, 27.9, 28.9, 29.9, 30.9, 31.9, 32.9, 33.9, 34.9, 35.9, 36.9, 38.0, 39.0, 40.0, 41.0],
+      [26.2, 27.2, 28.2, 29.3, 30.3, 31.3, 32.3, 33.3, 34.3, 35.4, 36.4, 37.4, 38.4, 39.5, 40.5, 41.5],
+      [26.6, 27.6, 28.6, 29.7, 30.7, 31.7, 32.7, 33.7, 34.8, 35.8, 36.8, 37.8, 38.9, 39.9, 40.9, 42.0],
+      [27.0, 28.0, 29.0, 30.0, 31.1, 32.1, 33.1, 34.1, 35.2, 36.2, 37.2, 38.3, 39.3, 40.4, 41.4, 42.4],
+      [27.3, 28.4, 29.4, 30.4, 31.4, 32.4, 33.5, 34.5, 35.6, 36.6, 37.7, 38.7, 39.7, 40.8, 41.8, 42.9],
+      [27.7, 28.7, 29.7, 30.8, 31.8, 32.8, 33.9, 34.9, 36.0, 37.0, 38.1, 39.1, 40.2, 41.2, 42.3, 43.3],
+      [28.0, 29.1, 30.1, 31.1, 32.2, 33.2, 34.3, 35.3, 36.4, 37.4, 38.5, 39.5, 40.6, 41.6, 42.7, 43.7],
+      [28.4, 29.4, 30.5, 31.5, 32.6, 33.6, 34.6, 35.7, 36.7, 37.8, 38.9, 39.9, 41.0, 42.0, 43.1, 44.1]
+    ];
 
-      if (isNaN(tempC) || isNaN(humidity)) {
-        document.getElementById("result").innerText = "온도와 습도를 모두 입력하세요.";
+    function calculate() {
+      const temp = parseInt(document.getElementById("temp").value);
+      const humidity = parseInt(document.getElementById("humidity").value);
+
+      // 가장 가까운 값 찾기
+      const tempIndex = temperatures.findIndex(t => t >= temp) !== -1 ? temperatures.findIndex(t => t >= temp) : temperatures.length - 1;
+      const humidityIndex = humidities.findIndex(h => h >= humidity) !== -1 ? humidities.findIndex(h => h >= humidity) : humidities.length - 1;
+
+      if (temp < 25 || temp > 40 || humidity < 40 || humidity > 100) {
+        document.getElementById("result").innerText = "기온 25~40°C, 습도 40~100% 범위에서 입력해주세요.";
         return;
       }
 
-      // 섭씨 → 화씨 변환
-      const T = tempC * 1.8 + 32;
-      const R = humidity;
-
-      // NOAA 체감온도 공식 (화씨 기준)
-      const HI_f = -42.379 + 2.04901523*T + 10.14333127*R - 0.22475541*T*R
-                  - 0.00683783*T*T - 0.05481717*R*R + 0.00122874*T*T*R
-                  + 0.00085282*T*R*R - 0.00000199*T*T*R*R;
-
-      // 화씨 → 섭씨 환산
-      const HI_c = (HI_f - 32) / 1.8;
-
-      document.getElementById("result").innerText =
-        `체감온도는 약 ${HI_c.toFixed(1)} °C 입니다.`;
+      const result = table[humidityIndex][tempIndex];
+      document.getElementById("result").innerText = `체감온도는 약 ${result.toFixed(1)} °C 입니다.`;
     }
   </script>
 </body>
